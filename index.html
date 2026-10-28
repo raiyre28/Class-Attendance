@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Attendance Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        /* Hide default radio buttons */
+        input[type="radio"] {
+            display: none;
+        }
+        /* Custom styling for selected radio labels */
+        input[type="radio"]:checked + label.present-btn {
+            background-color: #10b981; /* Emerald 500 */
+            color: white;
+            border-color: #10b981;
+        }
+        input[type="radio"]:checked + label.absent-btn {
+            background-color: #ef4444; /* Red 500 */
+            color: white;
+            border-color: #ef4444;
+        }
+        input[type="radio"]:checked + label.excused-btn {
+            background-color: #f59e0b; /* Amber 500 */
+            color: white;
+            border-color: #f59e0b;
+        }
+        /* Toast animation */
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .toast-animate {
+            animation: slideUp 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-gray-800 antialiased flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-indigo-600 text-white shadow-md">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-clipboard-user text-2xl"></i>
+                <h1 class="text-xl font-bold">ClassTrack</h1>
+            </div>
+            <button id="home-btn" class="hidden hover:bg-indigo-700 px-3 py-1 rounded transition text-sm font-medium">
+                <i class="fa-solid fa-house mr-1"></i> Home
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow flex items-center justify-center p-4">
+        
+        <!-- Screen 1: Role Selection -->
+        <div id="role-screen" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 transform transition-all duration-300">
+            <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Welcome to ClassTrack</h2>
+            <p class="text-center text-gray-500 mb-8">Please select your role to continue</p>
+            
+            <div class="grid grid-cols-1 gap-4">
+                <button onclick="switchScreen('student-screen')" class="group relative w-full flex justify-center py-4 px-4 border border-transparent text-lg font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-md transition-colors">
+                    <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                        <i class="fa-solid fa-user-graduate group-hover:text-indigo-300 text-indigo-400"></i>
+                    </span>
+                    Student Check-In
+                </button>
+                
+                <button onclick="switchScreen('teacher-screen')" class="group relative w-full flex justify-center py-4 px-4 border border-gray-300 text-lg font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm transition-colors">
+                    <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                        <i class="fa-solid fa-chalkboard-user group-hover:text-gray-500 text-gray-400"></i>
+                    </span>
+                    Teacher Dashboard
+                </button>
+            </div>
+        </div>
+
+        <!-- Screen 2: Student Check-In -->
+        <div id="student-screen" class="hidden w-full max-w-md bg-white rounded-2xl shadow-xl p-8 transform transition-all duration-300">
+            <h2 class="text-2xl font-bold text-center mb-2 text-gray-800">Student Check-In</h2>
+            <p class="text-center text-gray-500 mb-6" id="current-date-display"></p>
+            
+            <form id="attendance-form" onsubmit="submitAttendance(event)">
+                <div class="mb-6">
+                    <label for="student-name" class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <input type="text" id="student-name" required placeholder="e.g. John Doe" class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 transition-colors">
+                </div>
+
+                <div class="mb-8">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Status</label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <!-- Present -->
+                        <div>
+                            <input type="radio" id="status-present" name="status" value="Present" required>
+                            <label for="status-present" class="present-btn block w-full text-center py-3 border border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors font-medium text-sm text-gray-700 shadow-sm">
+                                <i class="fa-solid fa-check mb-1 block text-lg"></i>
+                                Present
+                            </label>
+                        </div>
+                        <!-- Absent -->
+                        <div>
+                            <input type="radio" id="status-absent" name="status" value="Absent">
+                            <label for="status-absent" class="absent-btn block w-full text-center py-3 border border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors font-medium text-sm text-gray-700 shadow-sm">
+                                <i class="fa-solid fa-xmark mb-1 block text-lg"></i>
+                                Absent
+                            </label>
+                        </div>
+                        <!-- Excused -->
+                        <div>
+                            <input type="radio" id="status-excused" name="status" value="Excused">
+                            <label for="status-excused" class="excused-btn block w-full text-center py-3 border border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors font-medium text-sm text-gray-700 shadow-sm">
+                                <i class="fa-solid fa-envelope-open-text mb-1 block text-lg"></i>
+                                Excused
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent text-lg font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-md transition-colors">
+                    Submit Attendance
+                </button>
+            </form>
+        </div>
+
+        <!-- Screen 3: Teacher Dashboard -->
+        <div id="teacher-screen" class="hidden w-full max-w-4xl bg-white rounded-2xl shadow-xl p-6 sm:p-8 transform transition-all duration-300">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Class Register</h2>
+                    <p class="text-gray-500 text-sm mt-1">Manage and export today's attendance.</p>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="downloadCSV()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition shadow-sm font-medium text-sm flex items-center">
+                        <i class="fa-solid fa-download mr-2"></i> Export CSV
+                    </button>
+                    <button onclick="clearData()" class="px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition shadow-sm font-medium text-sm flex items-center">
+                        <i class="fa-solid fa-trash-can mr-2"></i> Clear
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Summary -->
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="bg-emerald-50 rounded-xl p-4 border border-emerald-100 flex flex-col items-center">
+                    <span class="text-emerald-800 font-bold text-2xl" id="count-present">0</span>
+                    <span class="text-emerald-600 text-xs uppercase tracking-wider font-semibold">Present</span>
+                </div>
+                <div class="bg-red-50 rounded-xl p-4 border border-red-100 flex flex-col items-center">
+                    <span class="text-red-800 font-bold text-2xl" id="count-absent">0</span>
+                    <span class="text-red-600 text-xs uppercase tracking-wider font-semibold">Absent</span>
+                </div>
+                <div class="bg-amber-50 rounded-xl p-4 border border-amber-100 flex flex-col items-center">
+                    <span class="text-amber-800 font-bold text-2xl" id="count-excused">0</span>
+                    <span class="text-amber-600 text-xs uppercase tracking-wider font-semibold">Excused</span>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto border border-gray-200 rounded-xl shadow-inner">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Rows will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="empty-state" class="text-center py-10 hidden">
+                <i class="fa-regular fa-folder-open text-4xl text-gray-300 mb-3"></i>
+                <p class="text-gray-500">No attendance records yet.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Custom Toast Notification -->
+    <div id="toast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-xl shadow-2xl hidden z-50 flex items-center space-x-3">
+        <i class="fa-solid fa-circle-check text-green-400 text-xl"></i>
+        <span id="toast-message" class="font-medium">Success!</span>
+    </div>
+
+    <script>
+        // --- State Management ---
+        // For this single-file version, data is stored in the browser's memory.
+        let attendanceRecords = [];
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set current date in student view
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date-display').textContent = new Date().toLocaleDateString('en-US', options);
+            
+            // Home button event listener
+            document.getElementById('home-btn').addEventListener('click', () => switchScreen('role-screen'));
+            
+            // Render initial empty table
+            updateTeacherDashboard();
+        });
+
+        // --- Navigation ---
+        function switchScreen(screenId) {
+            // Hide all screens
+            document.getElementById('role-screen').classList.add('hidden');
+            document.getElementById('student-screen').classList.add('hidden');
+            document.getElementById('teacher-screen').classList.add('hidden');
+
+            // Show target screen
+            document.getElementById(screenId).classList.remove('hidden');
+
+            // Manage Home button visibility
+            const homeBtn = document.getElementById('home-btn');
+            if (screenId === 'role-screen') {
+                homeBtn.classList.add('hidden');
+            } else {
+                homeBtn.classList.remove('hidden');
+                if(screenId === 'teacher-screen'){
+                    updateTeacherDashboard();
+                }
+            }
+        }
+
+        // --- Student Logic ---
+        function submitAttendance(event) {
+            event.preventDefault(); // Prevent page reload
+
+            const nameInput = document.getElementById('student-name');
+            const statusInput = document.querySelector('input[name="status"]:checked');
+
+            if (!nameInput.value.trim() || !statusInput) {
+                showToast("Please fill in all fields.", "error");
+                return;
+            }
+
+            const newRecord = {
+                id: Date.now(),
+                name: nameInput.value.trim(),
+                status: statusInput.value,
+                timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            };
+
+            // Add to our array
+            attendanceRecords.push(newRecord);
+
+            // Reset form
+            document.getElementById('attendance-form').reset();
+
+            // Show success notification
+            showToast(`Thank you, ${newRecord.name}. Checked in as ${newRecord.status}.`);
+        }
+
+        // --- Teacher Logic ---
+        function updateTeacherDashboard() {
+            const tableBody = document.getElementById('attendance-table-body');
+            const emptyState = document.getElementById('empty-state');
+            const tableContainer = tableBody.parentElement.parentElement; // The div wrapping the table
+
+            // Update stats
+            let presentCount = 0, absentCount = 0, excusedCount = 0;
+            
+            tableBody.innerHTML = ''; // Clear current table
+
+            if (attendanceRecords.length === 0) {
+                tableContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+            } else {
+                tableContainer.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+
+                // Populate table in reverse order (newest first)
+                [...attendanceRecords].reverse().forEach(record => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50 transition-colors';
+                    
+                    // Determine badge styling based on status
+                    let badgeClass = '';
+                    if (record.status === 'Present') {
+                        badgeClass = 'bg-green-100 text-green-800';
+                        presentCount++;
+                    }
+                    else if (record.status === 'Absent') {
+                        badgeClass = 'bg-red-100 text-red-800';
+                        absentCount++;
+                    }
+                    else if (record.status === 'Excused') {
+                        badgeClass = 'bg-yellow-100 text-yellow-800';
+                        excusedCount++;
+                    }
+
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${record.timestamp}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${record.name}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${badgeClass}">
+                                ${record.status}
+                            </span>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            document.getElementById('count-present').textContent = presentCount;
+            document.getElementById('count-absent').textContent = absentCount;
+            document.getElementById('count-excused').textContent = excusedCount;
+        }
+
+        function clearData() {
+            // Using custom modal logic instead of alert/confirm as per system rules
+            const toast = document.getElementById('toast');
+            if(attendanceRecords.length === 0) {
+                showToast("No data to clear.", "error");
+                return;
+            }
+            
+            attendanceRecords = [];
+            updateTeacherDashboard();
+            showToast("Records cleared successfully.");
+        }
+
+        function downloadCSV() {
+            if (attendanceRecords.length === 0) {
+                showToast("No records to export.", "error");
+                return;
+            }
+
+            const headers = ["Time", "Student Name", "Status"];
+            const csvRows = [];
+            csvRows.push(headers.join(","));
+
+            attendanceRecords.forEach(record => {
+                // Escape quotes in names
+                const safeName = record.name.replace(/"/g, '""');
+                csvRows.push(`${record.timestamp},"${safeName}",${record.status}`);
+            });
+
+            const csvString = csvRows.join("\n");
+            const blob = new Blob([csvString], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `Attendance_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            showToast("Download started!");
+        }
+
+        // --- Utility: Custom Toast ---
+        let toastTimeout;
+        function showToast(message, type = "success") {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            const icon = toast.querySelector('i');
+
+            toastMessage.textContent = message;
+            
+            if (type === "success") {
+                icon.className = "fa-solid fa-circle-check text-green-400 text-xl";
+            } else {
+                icon.className = "fa-solid fa-circle-exclamation text-red-400 text-xl";
+            }
+
+            toast.classList.remove('hidden');
+            toast.classList.add('toast-animate');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('hidden');
+                toast.classList.remove('toast-animate');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
